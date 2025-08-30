@@ -9,7 +9,8 @@ import {
   LogOut, 
   Menu, 
   X,
-  User
+  User,
+  Wallet
 } from 'lucide-react'
 
 const Layout = ({ children }) => {
@@ -23,6 +24,7 @@ const Layout = ({ children }) => {
     { name: 'Students', href: '/students', icon: Users },
     { name: 'Sessions', href: '/sessions', icon: Clock },
     { name: 'Face Recognition', href: '/face-recognition', icon: Camera },
+    { name: 'Wallet Test', href: '/wallet-test', icon: Wallet },
   ]
 
   const handleLogout = async () => {

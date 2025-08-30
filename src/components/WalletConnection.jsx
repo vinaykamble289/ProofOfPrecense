@@ -1,116 +1,199 @@
-import React, { useEffect, useState } from 'react';
-import { useBlockchainService } from '../services/blockchainService';
-import { Wallet, CheckCircle, XCircle, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useWallet, useConnect, useDisconnect } from '@thirdweb-dev/react';
+import { 
+  Wallet, 
+  LogOut, 
+  Copy, 
+  CheckCircle, 
+  XCircle, 
+  AlertCircle,
+  ChevronDown,
+  ExternalLink
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const WalletConnection = () => {
-  const { 
-    address, 
-    isConnected, 
-    isConnecting, 
-    isExpectedWallet, 
-    connectToWallet, 
-    disconnectWallet,
-    contractAddress,
-    isThirdwebAvailable
-  } = useBlockchainService();
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [showWalletList, setShowWalletList] = useState(false);
+  const [copiedAddress, setCopiedAddress] = useState(false);
 
-  const [isAutoConnecting, setIsAutoConnecting] = useState(false);
+  const wallet = useWallet();
+  const connect = useConnect();
+  const disconnect = useDisconnect();
 
-  // Auto-connect to wallet when component mounts
+  const { address, isConnected, isConnecting: walletConnecting } = wallet || {};
+  const { connectors } = connect || {};
+
+  // Auto-hide copied message
   useEffect(() => {
-    if (isThirdwebAvailable && !isConnected && !isConnecting && !isAutoConnecting) {
-      setIsAutoConnecting(true);
-      handleAutoConnect();
+    if (copiedAddress) {
+      const timer = setTimeout(() => setCopiedAddress(false), 2000);
+      return () => clearTimeout(timer);
     }
-  }, [isConnected, isConnecting, isThirdwebAvailable]);
+  }, [copiedAddress]);
 
-  const handleAutoConnect = async () => {
+  const handleConnect = async (connector) => {
     try {
-      await connectToWallet();
-      toast.success('Wallet connected automatically!');
-    } catch (error) {
-      console.error('Auto-connection failed:', error);
-      toast.error('Auto-connection failed. Please connect manually.');
-    } finally {
-      setIsAutoConnecting(false);
-    }
-  };
-
-  const handleManualConnect = async () => {
-    try {
-      await connectToWallet();
+      setIsConnecting(true);
+      await connect(connector);
+      setShowWalletList(false);
       toast.success('Wallet connected successfully!');
     } catch (error) {
-      console.error('Manual connection failed:', error);
-      toast.error(error.message || 'Failed to connect wallet');
+      console.error('Connection error:', error);
+      let errorMessage = 'Failed to connect wallet';
+      
+      if (error.message.includes('User rejected')) {
+        errorMessage = 'Connection cancelled by user';
+      } else if (error.message.includes('No provider')) {
+        errorMessage = 'Wallet not installed. Please install the wallet extension.';
+      } else if (error.message.includes('Already processing')) {
+        errorMessage = 'Connection already in progress';
+      }
+      
+      toast.error(errorMessage);
+    } finally {
+      setIsConnecting(false);
     }
   };
 
   const handleDisconnect = () => {
-    disconnectWallet();
-    toast.success('Wallet disconnected');
+    try {
+      disconnect();
+      toast.success('Wallet disconnected');
+    } catch (error) {
+      console.error('Disconnect error:', error);
+      toast.error('Failed to disconnect wallet');
+    }
   };
 
-  const getStatusColor = () => {
-    if (!isThirdwebAvailable) return 'text-red-600';
-    if (isExpectedWallet) return 'text-green-600';
-    if (isConnected) return 'text-yellow-600';
-    return 'text-red-600';
+  const copyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(address);
+      setCopiedAddress(true);
+      toast.success('Address copied to clipboard!');
+    } catch (error) {
+      console.error('Copy failed:', error);
+      toast.error('Failed to copy address');
+    }
   };
 
-  const getStatusIcon = () => {
-    if (!isThirdwebAvailable) return <AlertTriangle className="w-5 h-5" />;
-    if (isExpectedWallet) return <CheckCircle className="w-5 h-5" />;
-    if (isConnected) return <AlertCircle className="w-5 h-5" />;
-    return <XCircle className="w-5 h-5" />;
+  const getWalletIcon = (connector) => {
+    const name = connector.name?.toLowerCase() || '';
+    
+    if (name.includes('metamask')) return '🦊';
+    if (name.includes('walletconnect')) return '🔗';
+    if (name.includes('coinbase')) return '🪙';
+    if (name.includes('rainbow')) return '🌈';
+    if (name.includes('trust')) return '🛡️';
+    if (name.includes('phantom')) return '👻';
+    if (name.includes('brave')) return '🦁';
+    if (name.includes('opera')) return '🔴';
+    
+    return '💳';
   };
 
-  const getStatusText = () => {
-    if (!isThirdwebAvailable) return 'Thirdweb Not Available';
-    if (isExpectedWallet) return 'Correct Wallet Connected';
-    if (isConnected) return 'Wrong Wallet Connected';
-    return 'Wallet Not Connected';
+  const getWalletName = (connector) => {
+    const name = connector.name || 'Unknown Wallet';
+    
+    // Map common wallet names to user-friendly names
+    const walletNames = {
+      'MetaMask': 'MetaMask',
+      'WalletConnect': 'WalletConnect',
+      'Coinbase Wallet': 'Coinbase Wallet',
+      'Rainbow': 'Rainbow',
+      'Trust Wallet': 'Trust Wallet',
+      'Phantom': 'Phantom',
+      'Brave Wallet': 'Brave Wallet',
+      'Opera Wallet': 'Opera Wallet',
+      'imToken': 'imToken',
+      'TokenPocket': 'TokenPocket',
+      'SafePal': 'SafePal',
+      'Math Wallet': 'Math Wallet'
+    };
+    
+    return walletNames[name] || name;
   };
 
-  const formatAddress = (addr) => {
-    if (!addr) return 'Not Connected';
-    return `${addr.substring(0, 6)}...${addr.substring(addr.length - 4)}`;
+  const getWalletDescription = (connector) => {
+    const name = connector.name?.toLowerCase() || '';
+    
+    if (name.includes('metamask')) return 'Popular Ethereum wallet';
+    if (name.includes('walletconnect')) return 'Connect any wallet';
+    if (name.includes('coinbase')) return 'Coinbase exchange wallet';
+    if (name.includes('rainbow')) return 'Beautiful mobile wallet';
+    if (name.includes('trust')) return 'Secure mobile wallet';
+    if (name.includes('phantom')) return 'Solana wallet';
+    if (name.includes('brave')) return 'Built into Brave browser';
+    if (name.includes('opera')) return 'Built into Opera browser';
+    
+    return 'Connect your wallet';
   };
 
-  const getExpectedAddress = () => {
-    return import.meta.env.VITE_EXPECTED_WALLET_ADDRESS || '0xA83a2fb6F87f6f18D6AFfE9763c1E278c324aC9B';
+  const getNetworkInfo = () => {
+    // This would typically come from your blockchain service
+    // For now, showing default Polygon info
+    return {
+      name: 'Polygon',
+      chainId: 137,
+      symbol: 'MATIC',
+      explorer: 'https://polygonscan.com'
+    };
   };
 
-  // If Thirdweb is not available, show a warning
-  if (!isThirdwebAvailable) {
+  const networkInfo = getNetworkInfo();
+
+  if (isConnected && address) {
     return (
-      <div className="bg-bg-secondary rounded-lg p-6 border border-border">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-text-primary">Wallet Connection</h3>
-          <div className="flex items-center space-x-2">
-            <AlertTriangle className="w-5 h-5 text-red-600" />
-            <span className="text-sm font-medium text-red-600">Thirdweb Not Available</span>
-          </div>
-        </div>
-        
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-          <div className="flex items-start space-x-2">
-            <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
-            <div className="text-sm text-red-800">
-              <p className="font-medium">Thirdweb Integration Issue</p>
-              <p className="mt-1">
-                The blockchain integration is currently unavailable. This might be due to:
-              </p>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Thirdweb provider not properly initialized</li>
-                <li>Network connectivity issues</li>
-                <li>Thirdweb service temporarily unavailable</li>
-              </ul>
-              <p className="mt-2">
-                Firebase features will continue to work normally. Please refresh the page or try again later.
-              </p>
+      <div className="relative">
+        <div className="flex items-center space-x-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+              <CheckCircle className="w-5 h-5 text-green-600" />
             </div>
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm font-medium text-green-800">Connected</p>
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                {networkInfo.name}
+              </span>
+            </div>
+            <div className="flex items-center space-x-2 mt-1">
+              <p className="text-xs text-green-600 font-mono">
+                {address.substring(0, 6)}...{address.substring(address.length - 4)}
+              </p>
+              <button
+                onClick={copyAddress}
+                className="text-green-600 hover:text-green-800 transition-colors"
+                title="Copy address"
+              >
+                {copiedAddress ? (
+                  <CheckCircle className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <a
+              href={`${networkInfo.explorer}/address/${address}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 text-green-600 hover:text-green-800 transition-colors"
+              title="View on explorer"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+            <button
+              onClick={handleDisconnect}
+              className="p-2 text-red-600 hover:text-red-800 transition-colors"
+              title="Disconnect wallet"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
@@ -118,140 +201,92 @@ const WalletConnection = () => {
   }
 
   return (
-    <div className="bg-bg-secondary rounded-lg p-6 border border-border">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-text-primary">Wallet Connection</h3>
-        <div className="flex items-center space-x-2">
-          <Wallet className="w-5 h-5 text-accent-primary" />
-          <span className={`text-sm font-medium ${getStatusColor()}`}>
-            {getStatusText()}
-          </span>
-        </div>
-      </div>
-
-      {/* Connection Status */}
-      <div className="space-y-4">
-        {/* Current Wallet Status */}
-        <div className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg">
+    <div className="relative">
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
+        {/* Connection Status */}
+        <div className="p-4 border-b border-gray-200">
           <div className="flex items-center space-x-3">
-            {getStatusIcon()}
-            <div>
-              <p className="text-sm text-text-secondary">Current Wallet</p>
-              <p className="font-mono text-text-primary">{formatAddress(address)}</p>
+            <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
+              <Wallet className="w-5 h-5 text-gray-600" />
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-text-tertiary">Status</p>
-            <p className={`text-sm font-medium ${getStatusColor()}`}>
-              {isConnected ? 'Connected' : 'Disconnected'}
-            </p>
-          </div>
-        </div>
-
-        {/* Expected Wallet */}
-        <div className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg">
-          <div className="flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600" />
-            <div>
-              <p className="text-sm text-text-secondary">Expected Wallet</p>
-              <p className="font-mono text-text-primary">{formatAddress(getExpectedAddress())}</p>
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-gray-900">Connect Wallet</h3>
+              <p className="text-xs text-gray-500">
+                Connect your wallet to use blockchain features
+              </p>
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-text-tertiary">Required</p>
-            <p className="text-sm font-medium text-green-600">Yes</p>
-          </div>
-        </div>
-
-        {/* Smart Contract Status */}
-        {contractAddress && (
-          <div className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center">
-                <span className="text-white text-xs">C</span>
-              </div>
-              <div>
-                <p className="text-sm text-text-secondary">Smart Contract</p>
-                <p className="font-mono text-text-primary">{formatAddress(contractAddress)}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-text-tertiary">Status</p>
-              <p className="text-sm font-medium text-blue-600">Deployed</p>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          {!isConnected ? (
-            <button
-              onClick={handleManualConnect}
-              disabled={isConnecting || isAutoConnecting}
-              className="btn btn-primary flex-1"
-            >
-              {isConnecting || isAutoConnecting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Connect Wallet
-                </>
-              )}
-            </button>
-          ) : (
-            <>
-              {!isExpectedWallet && (
-                <button
-                  onClick={handleManualConnect}
-                  className="btn btn-warning flex-1"
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Switch Wallet
-                </button>
-              )}
+            <div className="flex items-center space-x-2">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                {networkInfo.name}
+              </span>
               <button
-                onClick={handleDisconnect}
-                className="btn btn-secondary"
+                onClick={() => setShowWalletList(!showWalletList)}
+                className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
               >
-                Disconnect
+                <ChevronDown className={`w-4 h-4 transition-transform ${showWalletList ? 'rotate-180' : ''}`} />
               </button>
-            </>
-          )}
+            </div>
+          </div>
         </div>
 
-        {/* Instructions */}
-        {!isExpectedWallet && (
-          <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-              <div className="text-sm text-yellow-800">
-                <p className="font-medium">Wallet Mismatch</p>
-                <p>Please connect with wallet address: <code className="bg-yellow-100 px-1 rounded">{getExpectedAddress()}</code></p>
-                <p className="mt-1">This ensures you can interact with the smart contract and manage attendance records.</p>
+        {/* Wallet List */}
+        {showWalletList && (
+          <div className="p-4 space-y-3">
+            {connectors && connectors.length > 0 ? (
+              connectors.map((connector, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleConnect(connector)}
+                  disabled={isConnecting || walletConnecting}
+                  className="w-full flex items-center space-x-3 p-3 text-left border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <div className="text-2xl">{getWalletIcon(connector)}</div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">
+                      {getWalletName(connector)}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {getWalletDescription(connector)}
+                    </p>
+                  </div>
+                  {isConnecting && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                  )}
+                </button>
+              ))
+            ) : (
+              <div className="text-center py-4">
+                <AlertCircle className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-gray-500">No wallet connectors available</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Please check your Thirdweb configuration
+                </p>
               </div>
-            </div>
+            )}
           </div>
         )}
 
-        {/* Success Message */}
-        {isExpectedWallet && (
-          <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div className="flex items-start space-x-2">
-              <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
-              <div className="text-sm text-green-800">
-                <p className="font-medium">Wallet Connected Successfully!</p>
-                <p>You can now interact with the smart contract and manage attendance records on the blockchain.</p>
-              </div>
-            </div>
+        {/* Network Information */}
+        <div className="px-4 py-3 bg-gray-50 rounded-b-lg">
+          <div className="flex items-center justify-between text-xs text-gray-600">
+            <span>Network: {networkInfo.name} (Chain ID: {networkInfo.chainId})</span>
+            <span>Currency: {networkInfo.symbol}</span>
           </div>
-        )}
+        </div>
       </div>
+
+      {/* Connection Error */}
+      {isConnecting && (
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <p className="text-sm text-blue-800">Connecting to wallet...</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default WalletConnection;
+

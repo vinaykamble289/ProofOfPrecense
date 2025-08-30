@@ -164,79 +164,71 @@ export const useBlockchainService = () => {
   // Get contract address from environment variable
   const contractAddress = import.meta.env.VITE_SMART_CONTRACT_ADDRESS || "0xA83a2fb6F87f6f18D6AFfE9763c1E278c324aC9B";
   
-  // Use Thirdweb v4 hooks with error handling
-  let walletHook, connectHook, disconnectHook, contractHook;
-  
-  try {
-    // Try to use Thirdweb v4 hooks
-    walletHook = useWallet();
-    connectHook = useConnect();
-    disconnectHook = useDisconnect();
-    contractHook = useContract(contractAddress !== "YOUR_CONTRACT_ADDRESS" ? contractAddress : undefined);
-  } catch (error) {
-    console.warn('Thirdweb hooks not available:', error);
-    // Provide fallback values
-    walletHook = { address: null, isConnecting: false, isConnected: false };
-    connectHook = { connect: () => Promise.reject(new Error('Thirdweb not available')), connectors: [] };
-    disconnectHook = { disconnect: () => {} };
-    contractHook = { contract: null };
-  }
-  
+  // Use Thirdweb v4 hooks with proper error handling
+  const wallet = useWallet();
+  const connect = useConnect();
+  const disconnect = useDisconnect();
+  const { contract, isLoading: contractLoading } = useContract(contractAddress);
+
   // Safely destructure with fallbacks
-  const { address, isConnecting, isConnected } = walletHook || {};
-  const { connect, connectors } = connectHook || {};
-  const { disconnect } = disconnectHook || {};
-  const { contract } = contractHook || {};
+  const { address, isConnecting, isConnected } = wallet || {};
+  const { connectors } = connect || {};
 
   // Auto-connect to wallet when component mounts
   React.useEffect(() => {
-    if (isThirdwebAvailable && !isConnected && !isConnecting && connectors && connectors.length > 0) {
-      // Try to connect to the first available connector (usually MetaMask)
-      const connector = connectors[0];
-      if (connector && connect) {
-        console.log('🔄 Auto-connecting to wallet...');
-        try {
-          connect(connector);
-        } catch (error) {
-          console.warn('Auto-connection failed:', error);
-        }
-      }
+    if (isConnected && !contractLoading && contract) {
+      console.log('✅ Blockchain connected successfully');
     }
-  }, [isConnected, isConnecting, connectors, connect]);
+  }, [isConnected, contractLoading, contract]);
 
-  // Check if connected wallet matches the expected address
-  const expectedAddress = import.meta.env.VITE_EXPECTED_WALLET_ADDRESS || '0xA83a2fb6F87f6f18D6AFfE9763c1E278c324aC9B';
-  const isExpectedWallet = address && address.toLowerCase() === expectedAddress.toLowerCase();
-  const isThirdwebAvailable = !!(walletHook && connectHook && disconnectHook);
+  // Check if wallet is connected (any wallet is fine)
+  const isWalletConnected = !!isConnected && !!address;
 
   const addRecord = async (record) => {
-    if (!isExpectedWallet) {
-      throw new Error(`Please connect with the expected wallet address: ${expectedAddress}`);
+    if (!isWalletConnected) {
+      throw new Error('Please connect a wallet first');
+    }
+    if (!contract) {
+      throw new Error('Smart contract not available. Please check your connection.');
     }
     return await BlockchainService.addAttendanceRecord(record, contract);
   };
 
   const getRecords = async (sessionId) => {
+    if (!contract) {
+      throw new Error('Smart contract not available');
+    }
     return await BlockchainService.getAttendanceRecords(contract, sessionId);
   };
 
   const getStats = async () => {
+    if (!contract) {
+      return {
+        totalRecords: 0,
+        lastBlockNumber: 0,
+        contractAddress: null,
+        isConnected: false
+      };
+    }
     return await BlockchainService.getBlockchainStats(contract);
   };
 
   const verifyRecord = async (studentId, sessionId, timestamp) => {
+    if (!contract) {
+      throw new Error('Smart contract not available');
+    }
     return await BlockchainService.verifyRecord(contract, studentId, sessionId, timestamp);
   };
 
   // Connect to specific wallet
-  const connectToWallet = async () => {
-    if (connectors && connectors.length > 0 && connect) {
+  const connectToWallet = async (connector) => {
+    if (connectors && connectors.length > 0 && connector) {
       try {
-        await connect(connectors[0]);
+        await connect(connector);
         console.log('🔗 Connecting to wallet...');
       } catch (error) {
         console.error('Failed to connect wallet:', error);
-        throw new Error('Failed to connect wallet. Please check if MetaMask is installed and unlocked.');
+        throw new Error('Failed to connect wallet. Please check if the wallet is installed and unlocked.');
       }
     } else {
       throw new Error('Wallet connection not available. Please check Thirdweb configuration.');
@@ -255,7 +247,8 @@ export const useBlockchainService = () => {
     address: address || null,
     isConnected: !!isConnected,
     isConnecting: !!isConnecting,
-    isExpectedWallet: !!isExpectedWallet,
+    isWalletConnected: !!isWalletConnected,
+    isLoading: contractLoading,
     addRecord,
     getRecords,
     getStats,
@@ -263,6 +256,7 @@ export const useBlockchainService = () => {
     connectToWallet,
     disconnectWallet,
     contractAddress: contractAddress !== "YOUR_CONTRACT_ADDRESS" ? contractAddress : null,
-    isThirdwebAvailable
+    isThirdwebAvailable: true,
+    connectors: connectors || []
   };
 };

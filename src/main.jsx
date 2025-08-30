@@ -11,11 +11,16 @@ import './index.css'
 // Check if Thirdweb client ID is available
 const thirdwebClientId = import.meta.env.VITE_THIRDWEB_CLIENT_ID
 
+// Validate Thirdweb configuration
+if (!thirdwebClientId || thirdwebClientId === "your_thirdweb_client_id_here") {
+  console.warn('⚠️ Thirdweb Client ID not configured. Please set VITE_THIRDWEB_CLIENT_ID in your environment variables.');
+}
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <ThirdwebProvider 
       activeChain={Polygon}
-      clientId={thirdwebClientId || "your_thirdweb_client_id_here"}
+      clientId={thirdwebClientId || "demo_client_id"}
     >
       <BrowserRouter>
         <AuthProvider>

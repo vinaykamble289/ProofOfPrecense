@@ -59,13 +59,14 @@ Frontend (React + Vite)
 
    # Google Cloud Vision API
    VITE_GOOGLE_CLOUD_PROJECT_ID=your_project_id
-   VITE_GOOGLE_CLOUD_SERVICE_ACCOUNT_EMAIL=your_service_account_email
+   VITE_GOOGLE_CLOUD_API_KEY=your_api_key
 
    # Thirdweb Configuration
    VITE_THIRDWEB_CLIENT_ID=your_thirdweb_client_id
 
    # Smart Contract Address
    VITE_SMART_CONTRACT_ADDRESS=your_deployed_contract_address
+   VITE_EXPECTED_WALLET_ADDRESS=your_wallet_address
    ```
 
 4. **Start development server**
@@ -82,9 +83,8 @@ Frontend (React + Vite)
 
 ### **Google Cloud Vision API**
 1. Enable Vision API in your Google Cloud project
-2. Create a service account
-3. Download the service account key
-4. Add project details to `.env`
+2. Create an API key
+3. Add project details to `.env`
 
 ### **Thirdweb Setup**
 1. Create account at [thirdweb.com](https://thirdweb.com)
@@ -97,6 +97,10 @@ Frontend (React + Vite)
 ```
 src/
 ├── components/          # Reusable UI components
+│   ├── CameraTest.jsx  # Camera testing component
+│   ├── FirebaseStatus.jsx
+│   ├── Layout.jsx
+│   └── WalletConnection.jsx
 ├── contexts/           # React contexts (Auth, etc.)
 ├── pages/             # Main application pages
 ├── services/          # Business logic services
@@ -124,6 +128,24 @@ src/
 - Session creation and management
 - Attendance tracking and reporting
 
+## 🧪 **Testing Components**
+
+### **CameraTest Component**
+Use the `CameraTest` component to debug camera issues:
+```jsx
+import CameraTest from './components/CameraTest';
+
+// Add to your page for testing
+<CameraTest />
+```
+
+This component provides:
+- Camera device detection
+- Permission testing
+- Image capture testing
+- Detailed error messages
+- Troubleshooting tips
+
 ## 🚀 **Deployment**
 
 ### **Build for Production**
@@ -140,7 +162,7 @@ npx thirdweb deploy
 ## 🔒 **Security Features**
 
 - Firebase Authentication
-- Service account authentication for Google Cloud
+- API key authentication for Google Cloud
 - Blockchain immutability for attendance records
 - Secure API key management
 
@@ -151,6 +173,21 @@ npx thirdweb deploy
 3. **Mark Attendance** - Use AI face recognition
 4. **View Reports** - Monitor attendance statistics
 5. **Blockchain Verification** - Verify records on blockchain
+
+## 🆘 **Troubleshooting**
+
+### **Common Issues**
+- **Camera not working**: Check browser permissions and HTTPS requirement
+- **Blockchain connection failed**: Verify Thirdweb configuration and wallet connection
+- **Face recognition errors**: Check Google Cloud Vision API setup
+
+### **Quick Fixes**
+1. **Camera Issues**: Use the `CameraTest` component to diagnose problems
+2. **Blockchain Issues**: Check browser console for connection errors
+3. **API Errors**: Verify environment variables are set correctly
+
+### **Detailed Troubleshooting**
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for comprehensive solutions to common problems.
 
 ## 🤝 **Contributing**
 
@@ -166,6 +203,7 @@ This project is licensed under the MIT License.
 ## 🆘 **Support**
 
 For support and questions:
-- Check the [Environment Setup Guide](ENVIRONMENT_SETUP.md)
+- Check the [Troubleshooting Guide](TROUBLESHOOTING.md)
+- Review [Environment Setup Guide](ENVIRONMENT_SETUP.md)
 - Review Firebase and Google Cloud documentation
 - Consult Thirdweb documentation for blockchain integration

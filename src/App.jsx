@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Students from './pages/Students';
 import FaceRecognition from './pages/FaceRecognition';
 import Sessions from './pages/Sessions';
+import WalletTest from './pages/WalletTest';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -82,6 +83,7 @@ function App() {
         <Route path="/students" element={<Students />} />
         <Route path="/face-recognition" element={<FaceRecognition />} />
         <Route path="/sessions" element={<Sessions />} />
+        <Route path="/wallet-test" element={<WalletTest />} />
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Layout>
