@@ -1,0 +1,29 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Allow authenticated users to read and write their own files
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read and write student photos
+    match /students/{studentId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read and write session files
+    match /sessions/{sessionId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read and write attendance photos
+    match /attendance/{recordId}/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Default rule: deny all
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
